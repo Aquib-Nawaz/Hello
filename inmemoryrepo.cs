@@ -1,76 +1,40 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
-using Abp.Domain.Entities;
 using Abp.Domain.Repositories;
 
-public class InMemoryRepository<T> : IRepository<T> where T : class, IEntity<int>
+public class InMemoryRepository<T> : IRepository<T> where T : class
 {
-    private readonly List<T> _entities = new();
+    private readonly InMemoryDbSet<T> _dbSet;
 
-    public Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    public InMemoryRepository(InMemoryDbSet<T> dbSet)
     {
-        return Task.FromResult(_entities.AsQueryable().FirstOrDefault(predicate));
+        _dbSet = dbSet;
     }
 
-    public Task<T> InsertAsync(T entity)
+    public async Task<T> GetAsync(int id)
     {
-        entity.Id = _entities.Count + 1; // Auto-increment ID for testing
-        _entities.Add(entity);
-        return Task.FromResult(entity);
+        return await _dbSet.FindAsync(id);
     }
 
-    public Task<T> UpdateAsync(T entity)
+    public async Task<T> InsertAsync(T entity)
     {
-        var existing = _entities.FirstOrDefault(e => e.Id == entity.Id);
-        if (existing != null)
-        {
-            _entities.Remove(existing);
-        }
-        _entities.Add(entity);
-        return Task.FromResult(entity);
+        await _dbSet.AddAsync(entity);
+        return entity;
     }
 
-    public Task DeleteAsync(T entity)
+    public async Task<T> UpdateAsync(T entity)
     {
-        _entities.Remove(entity);
-        return Task.CompletedTask;
+        _dbSet.Update(entity);
+        return entity;
     }
 
-    public Task DeleteAsync(int id)
+    public async Task DeleteAsync(T entity)
     {
-        var entity = _entities.FirstOrDefault(e => e.Id == id);
-        if (entity != null)
-        {
-            _entities.Remove(entity);
-        }
-        return Task.CompletedTask;
+        _dbSet.Remove(entity);
     }
 
-    public Task<T> GetAsync(int id)
+    public IQueryable<T> GetAll()
     {
-        return Task.FromResult(_entities.FirstOrDefault(e => e.Id == id));
-    }
-
-    public Task<List<T>> GetAllListAsync()
-    {
-        return Task.FromResult(_entities.ToList());
-    }
-
-    public Task<List<T>> GetAllListAsync(Expression<Func<T, bool>> predicate)
-    {
-        return Task.FromResult(_entities.AsQueryable().Where(predicate).ToList());
-    }
-
-    public Task<long> CountAsync()
-    {
-        return Task.FromResult((long)_entities.Count);
-    }
-
-    public Task<long> CountAsync(Expression<Func<T, bool>> predicate)
-    {
-        return Task.FromResult((long)_entities.AsQueryable().Count(predicate));
+        return _dbSet.AsQueryable();
     }
 }
